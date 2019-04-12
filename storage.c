@@ -24,6 +24,9 @@ int storage_stat(const char* path, struct stat* st) {
     st->st_mode = found->mode;
     st->st_size = found->size;
     st->st_uid = getuid();
+    st->st_atime = found->atime;
+    st->st_mtime = found->mtime;
+    st->st_ctime = found->ctime;
 
     return 0;
   } else {
@@ -62,9 +65,8 @@ int storage_mknod(const char* path, int mode) {
     int rv = directory_put(get_inode(dirIdx), node.file, newNodeIdx);
     assert(rv == 0);
 
-    if ((mode & __S_IFDIR) == __S_IFDIR) {
-        // ignore until CH03
-        return -1;
+    if (is_folder(mode)) {
+      newNode->size = PAGE_SIZE;
     }
 
     return 0;
@@ -84,11 +86,22 @@ int storage_unlink(const char* path) {
   inode* file = get_inode(fileEnt->inum);
 
   if (file->refs == 0) {
+    if (is_folder(file->mode)) {
+      char nestedPath[4096];
+      strncpy(nestedPath, path, 4096);
+      join_to_path(nestedPath, fp.file);
+      int rv = storage_rmdir(nestedPath);
+      if (rv != 0) {
+        return rv;
+      }
+    }
+
     free_inode(fileEnt->inum);
     directory_delete(dir, fp.file);
+
     return 0;
   } else {
-    return -1;
+    return -EMLINK; 
   }
 }
 
@@ -106,7 +119,7 @@ int storage_rename(const char *from, const char *to) {
     if (entry > 0) {
       strncpy(entry->name, fpNew.file, 48);
       return 0;
-    } else {
+  } else {
       return -ENOENT;
     }
   }
@@ -121,7 +134,7 @@ int storage_read(const char* path, char* buf, size_t size, off_t offset) {
 
   inode* file = get_inode(fileIdx);
 
-  if ((file->mode & __S_IFDIR) == __S_IFDIR) {
+  if (is_folder(file->mode)) {
     return -EISDIR;
   }
 
@@ -176,7 +189,7 @@ int storage_write(const char* path, const char* buf, size_t size, off_t offset) 
 
   inode* file = get_inode(fileIdx);
 
-  if ((file->mode & __S_IFDIR) == __S_IFDIR) {
+  if (is_folder(file->mode)) {
     return -EISDIR;
   }
 
@@ -249,6 +262,62 @@ int storage_access(const char* path, int mask) {
 
 slist* storage_list(const char* path) {
   return directory_list(path);
+}
+
+int storage_mkdir(const char* path, mode_t mode) {
+  int rv = storage_mknod(path, __S_IFDIR | mode);
+  if (rv != 0) {
+    return -ENOSPC;
+  }
+
+  filepath fp = to_filepath(path);
+
+  int dirIdx = tree_lookup(path);
+  int parentIdx = tree_lookup(fp.crumbs);
+
+  inode* dir = get_inode(dirIdx);
+
+  directory_put(dir, ".", dirIdx);
+  directory_put(dir, "..", parentIdx);
+
+  return rv;
+}
+
+int storage_rmdir(const char* path) {
+  int dirIdx = tree_lookup(path);
+  if (dirIdx < 0) {
+    return -ENOENT;
+  }
+
+  filepath fp = to_filepath(path);
+  int parentIdx = tree_lookup(fp.crumbs);
+
+  inode* dir = get_inode(dirIdx);
+  inode* parent = get_inode(parentIdx);
+
+  if (is_folder(dir->mode)) {
+    int rv;
+    slist* contents = directory_list(path);
+
+    while (contents != 0) {
+      if (!streq(contents->data, ".") && !streq(contents->data, "..")) {
+        char filePath[4096];
+        strncpy(filePath, path, 4096);
+        join_to_path(filePath, contents->data);
+        rv = storage_unlink(filePath);
+        if (rv != 0) {
+          return rv;
+        }
+      }
+
+      contents = contents->next;
+    }
+
+    free_inode(dirIdx);
+    return directory_delete(parent, fp.file);
+  } else {
+    return -ENOTDIR;
+  }
 }
 
 filepath to_filepath(const char* path) {

@@ -71,7 +71,7 @@ int nufs_mknod(const char *path, mode_t mode, dev_t rdev) {
 // most of the following callbacks implement
 // another system call; see section 2 of the manual
 int nufs_mkdir(const char *path, mode_t mode) {
-  int rv = nufs_mknod(path, mode | 040000, 0);
+  int rv = storage_mkdir(path, mode);
   printf("mkdir(%s) -> %d\n", path, rv);
   return rv;
 }
@@ -90,8 +90,7 @@ int nufs_link(const char *from, const char *to) {
 }
 
 int nufs_rmdir(const char *path) {
-  // CH03
-  int rv = -1;
+  int rv = storage_rmdir(path);
   printf("rmdir(%s) -> %d\n", path, rv);
   return rv;
 }

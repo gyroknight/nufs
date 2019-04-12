@@ -33,7 +33,7 @@ void directory_init() {
 dirent* directory_lookup(inode* dd, const char* name) {
   while (dd > 0) {
     // Verify inode is a directory
-    if ((dd->mode & __S_IFDIR) == __S_IFDIR) {
+    if (is_folder(dd->mode)) {
       // Check direct pointers for file
       for (int ii = 0; ii < 5; ii++) {
         int pageIdx = dd->ptrs[ii];
@@ -145,7 +145,7 @@ slist* directory_list(const char* path) {
   inode* dir = get_inode(dirIdx);
 
   // Verify inode is directory
-  if ((dir->mode & __S_IFDIR) != __S_IFDIR) {
+  if (!is_folder(dir->mode)) {
     return 0;
   }
 

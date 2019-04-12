@@ -27,6 +27,8 @@ int    storage_rename(const char *from, const char *to);
 int    storage_set_time(const char* path, const struct timespec ts[2]);
 int    storage_access(const char*path, int mask);
 slist* storage_list(const char* path);
+int    storage_mkdir(const char* path, mode_t mode);
+int    storage_rmdir(const char* path);
 
 /**
  * @brief Converts a full path into a filepath struct for easier access to the file's
