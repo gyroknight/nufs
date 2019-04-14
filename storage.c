@@ -328,6 +328,20 @@ int storage_access(const char* path, int mask) {
   return rv;
 }
 
+int storage_set_time(const char* path, const struct timespec ts[2]) {
+  int rv = 0;
+  int fileIdx = tree_lookup(path);
+
+  if (fileIdx < 0) {
+    return -ENOENT;
+  }
+
+  inode* file = get_inode(fileIdx);
+  file->atime = ts[0];
+  file->mtime = ts[1];
+  return rv;  
+}
+
 slist* storage_list(const char* path) {
   return directory_list(path);
 }
@@ -386,6 +400,20 @@ int storage_rmdir(const char* path) {
   } else {
     return -ENOTDIR;
   }
+}
+
+int storage_chmod(const char* path, mode_t mode) {
+  int fileIdx = tree_lookup(path);
+
+  if (fileIdx < 0) {
+    return -ENOENT;
+  }
+
+  inode* file = get_inode(fileIdx);
+  file->mode = file->mode | mode;
+  file->ctime = time(NULL); 
+
+  return 0;
 }
 
 filepath to_filepath(const char* path) {

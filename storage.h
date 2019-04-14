@@ -31,6 +31,7 @@ int    storage_access(const char*path, int mask);
 slist* storage_list(const char* path);
 int    storage_mkdir(const char* path, mode_t mode);
 int    storage_rmdir(const char* path);
+int    storage_chmod(const char* path, mode_t mode);
 
 /**
  * @brief Converts a full path into a filepath struct for easier access to the file's

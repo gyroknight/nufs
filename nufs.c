@@ -115,8 +115,7 @@ int nufs_rename(const char *from, const char *to) {
 }
 
 int nufs_chmod(const char *path, mode_t mode) {
-  // CH03
-  int rv = -1;
+  int rv = storage_chmod(path, mode);
   printf("chmod(%s, %04o) -> %d\n", path, mode, rv);
   return rv;
 }
@@ -155,8 +154,7 @@ int nufs_write(const char *path, const char *buf, size_t size, off_t offset,
 
 // Update the timestamps on a file or directory.
 int nufs_utimens(const char *path, const struct timespec ts[2]) {
-  // Actually do something in CH03
-  int rv = 0;
+  int rv = storage_set_time(path, ts);
   printf("utimens(%s, [%ld, %ld; %ld %ld]) -> %d\n", path, ts[0].tv_sec,
          ts[0].tv_nsec, ts[1].tv_sec, ts[1].tv_nsec, rv);
   return rv;
