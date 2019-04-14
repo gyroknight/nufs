@@ -62,6 +62,10 @@ int storage_mknod(const char* path, int mode) {
 
     newNode->ptrs[0] = newPageIdx;
     newNode->mode = mode;
+    time_t currentTime = time(NULL);
+    newNode->atime = currentTime;
+    newNode->ctime = currentTime;
+    newNode->mtime = currentTime;
 
     int rv = directory_put(get_inode(dirIdx), node.file, newNodeIdx);
     assert(rv == 0);
@@ -242,6 +246,8 @@ int storage_read(const char* path, char* buf, size_t size, off_t offset) {
       file = get_inode(file->iptr);
     }
 
+    file->atime = time(NULL);
+
     return size;
   }
 
@@ -295,6 +301,8 @@ int storage_write(const char* path, const char* buf, size_t size, off_t offset) 
       file = get_inode(file->iptr);
     }
 
+    file->mtime = time(NULL);
+
     return size;
   }
 
@@ -308,6 +316,8 @@ int storage_truncate(const char *path, off_t size) {
   }
   
   inode* file = get_inode(fileIdx);
+
+  file->mtime = time(NULL);
 
   if (size > file->size) {
     return grow_inode(file, size);
@@ -337,8 +347,8 @@ int storage_set_time(const char* path, const struct timespec ts[2]) {
   }
 
   inode* file = get_inode(fileIdx);
-  file->atime = ts[0];
-  file->mtime = ts[1];
+  file->atime = ts[0].tv_sec;
+  file->mtime = ts[1].tv_sec;
   return rv;  
 }
 
@@ -410,7 +420,7 @@ int storage_chmod(const char* path, mode_t mode) {
   }
 
   inode* file = get_inode(fileIdx);
-  file->mode = file->mode | mode;
+  file->mode = mode;
   file->ctime = time(NULL); 
 
   return 0;

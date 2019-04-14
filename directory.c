@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <time.h>
 
 #include "bitmap.h"
 #include "inode.h"
@@ -25,6 +26,10 @@ void directory_init() {
     root->mode = __S_IFDIR | 0755;
     root->ptrs[0] = 5;
     root->size = 4096;
+    time_t currentTime = time(NULL);
+    root->atime = currentTime;
+    root->ctime = currentTime;
+    root->mtime = currentTime;
     directory_put(root, ".", rootIdx);
     directory_put(root, "..", rootIdx); // .. points to itself, should point to folder above mnt?
   }
