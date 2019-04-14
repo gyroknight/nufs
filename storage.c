@@ -27,6 +27,7 @@ int storage_stat(const char* path, struct stat* st) {
     st->st_atime = found->atime;
     st->st_mtime = found->mtime;
     st->st_ctime = found->ctime;
+    st->st_nlink = found->refs + 1;
 
     return 0;
   } else {
@@ -65,7 +66,7 @@ int storage_mknod(const char* path, int mode) {
     int rv = directory_put(get_inode(dirIdx), node.file, newNodeIdx);
     assert(rv == 0);
 
-    if (is_folder(mode)) {
+    if (is_folder(mode) || is_link(mode)) {
       newNode->size = PAGE_SIZE;
     }
 
@@ -97,11 +98,78 @@ int storage_unlink(const char* path) {
     }
 
     free_inode(fileEnt->inum);
-    directory_delete(dir, fp.file);
+  } else {
+    file->refs--;
+  }
 
+  directory_delete(dir, fp.file);
+
+  return 0;
+}
+
+int storage_link(const char* from, const char* to) {
+  filepath fp = to_filepath(to);
+  int fromIdx = tree_lookup(from);
+  int toIdx = tree_lookup(to);
+  int toParentIdx = tree_lookup(fp.crumbs);
+  if (fromIdx < 0 || toParentIdx < 0) {
+    return -ENOENT;
+  }
+  if (toIdx >= 0) {
+    return -EEXIST;
+  }
+
+  inode* fromFile = get_inode(fromIdx);
+
+  if (is_folder(fromFile->mode)) {
+    return -EISDIR;
+  }
+
+  inode* toParent = get_inode(toParentIdx);
+
+  int rv = directory_put(toParent, fp.file, fromIdx);
+
+  if (rv == 0) {
+    fromFile->refs++;
     return 0;
   } else {
-    return -EMLINK; 
+    return rv;
+  }
+}
+
+int storage_symlink(const char* to, const char* from) {
+  int fromIdx = tree_lookup(from);
+  if (fromIdx >= 0) {
+    return -EEXIST;
+  }
+
+  int rv = storage_mknod(from, __S_IFLNK | 0777);
+
+  if (rv < 0) {
+    return rv;
+  }
+
+  fromIdx = tree_lookup(from);
+
+  inode* link = get_inode(fromIdx);
+
+  strncpy(pages_get_page(link->ptrs[0]), to, PAGE_SIZE);
+  return 0;
+}
+
+int storage_readlink(const char* path, char* buf, size_t size) {
+  int linkIdx = tree_lookup(path);
+  if (linkIdx < 0) {
+    return -ENOENT;
+  }
+  inode* link = get_inode(linkIdx);
+
+  if (is_link(link->mode)) {
+    size = min(size, PAGE_SIZE);
+    strncpy(buf, pages_get_page(link->ptrs[0]), size);
+    return 0;
+  } else {
+    return -EPERM;
   }
 }
 

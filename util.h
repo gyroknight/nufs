@@ -36,4 +36,8 @@ static int is_folder(mode_t mode) {
     return (mode & __S_IFDIR) == __S_IFDIR;
 }
 
+static int is_link(mode_t mode) {
+  return __S_ISTYPE(mode, __S_IFLNK);
+}
+
 #endif

@@ -83,9 +83,20 @@ int nufs_unlink(const char *path) {
 }
 
 int nufs_link(const char *from, const char *to) {
-  // CH03
-  int rv = -1;
+  int rv = storage_link(from, to);
   printf("link(%s => %s) -> %d\n", from, to, rv);
+  return rv;
+}
+
+int nufs_symlink(const char* to, const char* from) {
+  int rv = storage_symlink(to, from);
+  printf("symlink(%s => %s) -> %d\n", from, to, rv);
+  return rv;
+}
+
+int nufs_readlink(const char* path, char* buf, size_t size) {
+  int rv = storage_readlink(path, buf, size);
+  printf("readlink(%s => %s) -> %d\n", path, buf, rv);
   return rv;
 }
 
@@ -168,6 +179,8 @@ void nufs_init_ops(struct fuse_operations *ops) {
   ops->mknod = nufs_mknod;
   ops->mkdir = nufs_mkdir;
   ops->link = nufs_link;
+  ops->symlink = nufs_symlink;
+  ops->readlink = nufs_readlink;
   ops->unlink = nufs_unlink;
   ops->rmdir = nufs_rmdir;
   ops->rename = nufs_rename;
